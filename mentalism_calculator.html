@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Calculator</title>
+  
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#121212">
+  
+  <!-- Inline Data-URI Web Manifest (Links to icon.png automatically!) -->
+  <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkNhbGN1bGF0b3IiLAogICJzaG9ydF9uYW1lIjogIkNhbGN1bGF0b3IiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzEyMTIxMiIsCiAgInRoZW1lX2NvbG9yIjogIiMxMjEyMTIiLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJpY29uLnBuZyIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIgogICAgfQogIF0KfQ==">
+
+  <!-- High-fidelity custom icon links -->
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
+  <link rel="icon" type="image/png" href="icon.png">
+
+  <!-- Google Sans & Roboto Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-color: #121212;
+      --display-bg: #121212;
+      --btn-number-bg: #2d2f31;
+      --btn-number-text: #e3e2e6;
+      --btn-function-bg: #3f474f;
+      --btn-function-text: #c4c7c5;
+      --btn-accent-bg: #a8c7fa; /* Pixel Light Blue Accent */
+      --btn-accent-text: #062e6f;
+      --btn-operator-bg: #ffb4ab; /* Light coral operator */
+      --btn-operator-text: #690005;
+      
+      /* Stealth contrasts */
+      --stealth-low: #151515;       /* Ultra-Low: virtually black-on-black */
+      --stealth-medium: #3c3e41;    /* Medium: faintly visible */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      font-family: 'Google Sans', 'Roboto', sans-serif;
+    }
+
+    body {
+      background-color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .calc-container {
+      background-color: var(--bg-color);
+      width: 100%;
+      max-width: 420px;
+      height: 100vh;
+      max-height: 900px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8);
+    }
+
+    @media (min-height: 800px) {
+      .calc-container {
+        border-radius: 32px;
+        height: 90vh;
+        border: 6px solid #2d2f31;
+      }
+    }
+
+    /* Stock Android-Style Status Bar */
+    .status-bar {
+      height: 38px;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: #ffffff;
+      background-color: var(--display-bg);
+      z-index: 45;
+      position: relative;
+    }
+
+    .status-bar-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-bar-right svg {
+      fill: currentColor;
+    }
+
+    .peek-zone {
+      position: absolute;
+      z-index: 40;
+      cursor: pointer;
+      pointer-events: none;
+      transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border 0.2s;
+    }
+
+    /* Magician Practice Guides */
+    .peek-zone.visual-helper {
+      background-color: rgba(76, 175, 80, 0.22) !important;
+      border: 2px dashed rgba(76, 175, 80, 0.7) !important;
+    }
+
+    /* Secret Target Zone Left (Below 0 button - Bottom-Left corner of screen) */
+    #zone-left {
+      bottom: 0;
+      left: 0;
+      width: 25%;
+      height: 80px;
+    }
+
+    /* Secret Target Zone Right (Below equals button - Bottom-Right corner of screen) */
+    #zone-right {
+      bottom: 0;
+      right: 0;
+      width: 25%;
+      height: 80px;
+    }
+
+    /* Backup Secret Target Zone over display */
+    #zone-display {
+      top: 38px;
+      left: 0;
+      width: 100%;
+      height: 35%;
+    }
+
+    .calc-display {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      padding: 16px 24px 24px 24px;
+      background-color: var(--display-bg);
+      position: relative;
+    }
+
+    .expression-preview {
+      font-size: 26px;
+      color: #909090;
+      min-height: 36px;
+      word-break: break-all;
+      text-align: right;
+      font-weight: 300;
+      margin-bottom: 12px;
+      width: 100%;
+    }
+
+    .main-display {
+      font-size: 58px;
+      color: #ffffff;
+      font-weight: 300;
+      word-break: break-all;
+      text-align: right;
+      width: 100%;
+      max-height: 150px;
+      overflow-y: auto;
+      scrollbar-width: none;
+      transition: font-size 0.15s ease;
+    }
+    .main-display::-webkit-scrollbar {
+      display: none;
+    }
+
+    .keypad {
+      padding: 8px 16px 32px 16px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      background-color: var(--bg-color);
+      position: relative;
+      z-index: 10;
+    }
+
+    .btn {
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: none;
+      font-size: 28px;
+      font-weight: 400;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: background-color 0.1s ease, transform 0.08s cubic-bezier(0.1, 0.8, 0.2, 1);
+      outline: none;
+    }
+
+    .btn:active {
+      transform: scale(0.92);
+      filter: brightness(1.2);
+    }
+
+    .btn-num {
+      background-color: var(--btn-number-bg);
+      color: var(--btn-number-text);
+    }
+
+    .btn-func {
+      background-color: var(--btn-function-bg);
+      color: var(--btn-function-text);
+      font-size: 24px;
+    }
+
+    .btn-op {
+      background-color: var(--btn-operator-bg);
+      color: var(--btn-operator-text);
+    }
+
+    .btn-accent {
+      background-color: var(--btn-accent-bg);
+      color: var(--btn-accent-text);
+      font-weight: 500;
+    }
+
+    /* SECRET SPECTATOR PEEK WINDOW (Ultra-low visibility background) */
+    .secret-peek-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #0b0b0b;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      padding: 40px 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.12s cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    .secret-peek-overlay.active {
+      opacity: 1;
+    }
+
+    .peek-header {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 24px;
+      font-weight: 500;
+    }
+
+    .peek-scroll-container {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding-bottom: 40px;
+      scrollbar-width: none;
+    }
+    .peek-scroll-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .peek-entry {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+      padding-bottom: 14px;
+    }
+
+    .peek-entry .peek-eq {
+      font-size: 16px;
+      margin-bottom: 6px;
+      word-break: break-all;
+      opacity: 0.85;
+    }
+
+    .peek-entry .peek-res {
+      font-size: 24px;
+      font-weight: 500;
+      word-break: break-all;
+    }
+
+    /* ALWAYS ON DISPLAY (AOD) PEEK SCREEN */
+    .aod-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #000000;
+      z-index: 55;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s cubic-bezier(0.1, 0.8, 0.2, 1);
+      color: #e3e2e6;
+    }
+
+    .aod-screen.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .aod-time {
+      font-size: 78px;
+      font-weight: 300;
+      font-family: 'Google Sans', sans-serif;
+      margin-bottom: 4px;
+      color: #ffffff;
+    }
+
+    .aod-date {
+      font-size: 20px;
+      font-weight: 400;
+      color: #c4c7c5;
+      margin-bottom: 24px;
+    }
+
+    .aod-battery-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #909090;
+    }
+
+    .settings-modal {
+      position: absolute;
+      bottom: -100%;
+      left: 0;
+      width: 100%;
+      height: 88%;
+      background-color: #1e1f22;
+      border-top-left-radius: 28px;
+      border-top-right-radius: 28px;
+      box-shadow: 0 -12px 40px rgba(0,0,0,0.7);
+      z-index: 60;
+      transition: bottom 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      color: #e3e2e6;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+    }
+
+    .settings-modal.open {
+      bottom: 0;
+    }
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #33353a;
+      padding-bottom: 18px;
+      margin-bottom: 16px;
+    }
+
+    .settings-title {
+      font-size: 21px;
+      font-weight: 500;
+      color: #ffb4ab;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .close-settings-btn {
+      background: none;
+      border: none;
+      color: #c4c7c5;
+      font-size: 32px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .settings-body {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .setting-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .setting-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #c4c7c5;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .option-btn {
+      background-color: #2d2f31;
+      color: #c4c7c5;
+      border: 2px solid transparent;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .option-btn.selected {
+      background-color: #a8c7fa;
+      color: #062e6f;
+      border-color: #a8c7fa;
+    }
+
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #2d2f31;
+      padding: 14px 16px;
+      border-radius: 12px;
+    }
+
+    .toggle-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .toggle-title {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .toggle-desc {
+      font-size: 11px;
+      color: #909090;
+    }
+
+    /* Custom Switch Styling */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 52px;
+      height: 28px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #444746;
+      transition: .25s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .25s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #a8c7fa;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(24px);
+      background-color: #062e6f;
+    }
+
+    .danger-btn {
+      background-color: #8c1d18;
+      color: #f2b8b5;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      margin-top: 5px;
+    }
+
+    .danger-btn:active {
+      background-color: #b3261e;
+    }
+
+    /* Material Feedback Notification Toast */
+    .toast-msg {
+      position: absolute;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #322f35;
+      color: #f5eff7;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    
+    .toast-msg.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="calc-container" id="calculator">
+    
+    <!-- Real-Looking Android Status Bar -->
+    <div class="status-bar" id="status-bar-trigger">
+      <div id="status-time">12:00</div>
+      <div class="status-bar-right">
+        <!-- Wi-Fi Icon SVG -->
+        <svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 21l-12-11.6c4.6-4.6 11.2-5.4 16.8-2.4l-4.8 14zm0-20c-6.6 0-12 5.4-12 12 0 2.2.6 4.3 1.7 6.2l1.5-1.5c-.8-1.4-1.2-3-1.2-4.7 0-5 4-9 9-9s9 4 9 9c0 1.7-.4 3.3-1.2 4.7l1.5 1.5c1.1-1.9 1.7-4 1.7-6.2 0-6.6-5.4-12-12-12zm0 4c-4.4 0-8 3.6-8 8 0 1.5.4 3 1.2 4.2l1.5-1.5c-.5-.8-.7-1.7-.7-2.7 0-3.3 2.7-6 6-6s6 2.7 6 6c0 1-.2 1.9-.7 2.7l1.5 1.5c.8-1.2 1.2-2.7 1.2-4.2 0-4.4-3.6-8-8-8z"/></svg>
+        <!-- Signal Icon SVG -->
+        <svg width="15" height="15" viewBox="0 0 24 24"><path d="M2 22h20v-20z"/></svg>
+        <!-- Battery Icon SVG & Text -->
+        <span id="status-battery-pct">85%</span>
+        <svg width="15" height="15" viewBox="0 0 24 24"><path d="M17 5H16V3H8V5H7C5.9 5 5 5.9 5 7V21C5 22.1 5.9 23 7 23H17C18.1 23 19 22.1 19 21V7C19 5.9 18.1 5 17 5Z"/></svg>
+      </div>
+    </div>
+
+    <!-- Secret Touch Bezel Areas positioned below the keys for perfect ergonomics -->
+    <div class="peek-zone" id="zone-left"></div>
+    <div class="peek-zone" id="zone-right"></div>
+    <div class="peek-zone" id="zone-display"></div>
+
+    <!-- Live Standard Calculator Display -->
+    <div class="calc-display" id="display-area">
+      <div class="expression-preview" id="expression-preview"></div>
+      <div class="main-display" id="main-display">0</div>
+    </div>
+
+    <!-- Layout structured exactly as specified -->
+    <div class="keypad">
+      <!-- Row 1 -->
+      <button class="btn btn-func" id="btn-clear">AC</button>
+      <button class="btn btn-func" onclick="handleOp('()')">( )</button>
+      <button class="btn btn-func" onclick="handleOp('%')">%</button>
+      <button class="btn btn-op" onclick="handleOp('/')">÷</button>
+
+      <!-- Row 2 -->
+      <button class="btn btn-num" onclick="handleNum('7')">7</button>
+      <button class="btn btn-num" onclick="handleNum('8')">8</button>
+      <button class="btn btn-num" onclick="handleNum('9')">9</button>
+      <button class="btn btn-op" onclick="handleOp('*')">×</button>
+
+      <!-- Row 3 -->
+      <button class="btn btn-num" onclick="handleNum('4')">4</button>
+      <button class="btn btn-num" onclick="handleNum('5')">5</button>
+      <button class="btn btn-num" onclick="handleNum('6')">6</button>
+      <button class="btn btn-op" onclick="handleOp('-')">−</button>
+
+      <!-- Row 4 -->
+      <button class="btn btn-num" onclick="handleNum('1')">1</button>
+      <button class="btn btn-num" onclick="handleNum('2')">2</button>
+      <button class="btn btn-num" onclick="handleNum('3')">3</button>
+      <button class="btn btn-op" onclick="handleOp('+')">+</button>
+
+      <!-- Row 5 (Realigned exactly to constraints: 0 below 1, . below 2, ⌫ below 3) -->
+      <button class="btn btn-num" onclick="handleNum('0')">0</button>
+      <button class="btn btn-num" onclick="handleNum('.')">.</button>
+      <button class="btn btn-num" onclick="performBackspace()">⌫</button>
+      <button class="btn btn-accent" onclick="calculate()">=</button>
+    </div>
+
+    <!-- SECRET SPECTATOR PEEK WINDOW (Ultra-low visibility background) -->
+    <div class="secret-peek-overlay" id="peek-overlay">
+      <div class="peek-header" id="peek-header-label">Secret Session Log</div>
+      <div class="peek-scroll-container" id="peek-log-container">
+        <!-- Live spectator inputs loaded in real-time -->
+      </div>
+    </div>
+
+    <!-- ALWAYS ON DISPLAY (AOD) PEEK SCREEN -->
+    <div class="aod-screen" id="aod-screen">
+      <div class="aod-time" id="aod-time-display">12:00</div>
+      <div class="aod-date" id="aod-date-display">Mon, Jun 1</div>
+      <div class="aod-battery-row">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color: #909090;"><path d="M17 5H16V3H8V5H7C5.9 5 5 5.9 5 7V21C5 22.1 5.9 23 7 23H17C18.1 23 19 22.1 19 21V7C19 5.9 18.1 5 17 5Z"/></svg>
+        <span id="aod-battery-display">85%</span>
+      </div>
+    </div>
+
+    <!-- MAGICIAN SETTINGS SLIDING DRAWER -->
+    <div class="settings-modal" id="settings-modal">
+      <div class="settings-header">
+        <span class="settings-title">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          Magician Settings
+        </span>
+        <button class="close-settings-btn" onclick="toggleSettings(false)">&times;</button>
+      </div>
+
+      <div class="settings-body">
+        
+        <!-- OS Notification Authorize Button -->
+        <div class="setting-group">
+          <span class="setting-label">Real Device Lock Screen Peek (No Touch)</span>
+          <button class="option-btn" id="btn-request-notifications" onclick="requestNotificationPermission()" style="background-color: #4f378b; color: #ffffff; width: 100%;">
+            🔔 Authorize Lock Screen Alerts
+          </button>
+        </div>
+
+        <!-- Stealth Notification Preset Template Choice -->
+        <div class="setting-group">
+          <span class="setting-label">Lock Screen Disguise Template</span>
+          <div class="options-grid">
+            <button class="option-btn" id="opt-temp-calendar" onclick="selectTemplate('calendar')">Calendar Reminder</button>
+            <button class="option-btn" id="opt-temp-system" onclick="selectTemplate('system')">System Patch Check</button>
+            <button class="option-btn" id="opt-temp-weather" onclick="selectTemplate('weather')">Weather Alert</button>
+            <button class="option-btn" id="opt-temp-raw" onclick="selectTemplate('raw')">Raw Numbers Only</button>
+          </div>
+        </div>
+
+        <!-- Interactive Trigger Zones -->
+        <div class="setting-group">
+          <span class="setting-label">Backup Peek Zone (Holding Target)</span>
+          <div class="options-grid">
+            <button class="option-btn" id="opt-zone-left" onclick="selectZone('left')">Left Corner</button>
+            <button class="option-btn" id="opt-zone-right" onclick="selectZone('right')">Right Corner</button>
+            <button class="option-btn" id="opt-zone-both" onclick="selectZone('both')">Both Corners</button>
+            <button class="option-btn" id="opt-zone-display" onclick="selectZone('display')">Entire Display</button>
+          </div>
+        </div>
+
+        <!-- Stealth Profiles -->
+        <div class="setting-group">
+          <span class="setting-label">Backup Peek Contrast</span>
+          <div class="options-grid">
+            <button class="option-btn" id="opt-stealth-low" onclick="selectStealth('low')">Ultra-Low (Stealth)</button>
+            <button class="option-btn" id="opt-stealth-medium" onclick="selectStealth('medium')">Medium (Readable)</button>
+          </div>
+        </div>
+
+        <!-- Practice Highlights Toggle -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-title">Practice Visual Guides</span>
+            <span class="toggle-desc">Highlights interactive peek areas in green</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="practice-guide-toggle" onchange="togglePracticeGuide(this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Explanation Footer Info -->
+        <div class="toggle-row" style="background-color: transparent; padding: 0;">
+          <div class="toggle-info">
+            <span class="toggle-title" style="color: #ffb4ab;">💡 Backup Always-On Display Gesture:</span>
+            <span class="toggle-desc" style="color: #c4c7c5; margin-top: 4px; line-height: 1.4;">
+              Triple-tap the status bar clock at the very top of the screen to lock/unlock your custom Always-On Display (AOD) screen if you are not using OS lock screen push alerts.
+            </span>
+          </div>
+        </div>
+
+        <!-- Purge Session Log Button -->
+        <div class="setting-group" style="margin-top: auto;">
+          <button class="danger-btn" onclick="clearSecretLogs()">Wipe Secret History Log</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Notification Toast component -->
+    <div class="toast-msg" id="toast">Settings Saved</div>
+
+  </div>
+
+  <script>
+    // System and Calculation State
+    let displayValue = '0';
+    let expressionValue = '';
+    let isEvaluated = false;
+    let bracketCount = 0;
+
+    // Invisible Magician Log
+    let secretLogs = [];
+    let lastLoggedExpression = '';
+
+    // Status bar variables
+    let actualSystemTime = '12:00';
+    let actualSystemDate = 'Mon, Jun 1';
+    let actualBatteryPct = '85%';
+    let dynamicPeekActive = true; 
+    let timeOverrideData = null; // Stores parsed peak data {time, date, battery}
+
+    // Safe memory implementation avoiding iframe/sandbox crash blocks
+    let memoryFallback = {
+      triggerZone: 'both',
+      stealthMode: 'low',
+      practiceGuides: false,
+      notificationTemplate: 'calendar' // 'calendar', 'system', 'weather', 'raw'
+    };
+
+    let appConfig = { ...memoryFallback };
+
+    // Self-healing Storage API
+    function loadConfig() {
+      try {
+        const stored = localStorage.getItem('magic_calc_config');
+        if (stored) {
+          appConfig = { ...appConfig, ...JSON.parse(stored) };
+        }
+      } catch (e) {
+        appConfig = { ...memoryFallback };
+      }
+      applyConfiguration();
+    }
+
+    function saveConfig() {
+      try {
+        localStorage.setItem('magic_calc_config', JSON.stringify(appConfig));
+      } catch (e) {
+        memoryFallback = { ...appConfig };
+      }
+    }
+
+    // Adapt touch layers on state change
+    function applyConfiguration() {
+      document.querySelectorAll('.peek-zone').forEach(z => {
+        z.style.pointerEvents = 'none';
+        z.classList.remove('visual-helper');
+      });
+
+      const leftZone = document.getElementById('zone-left');
+      const rightZone = document.getElementById('zone-right');
+      const displayZone = document.getElementById('zone-display');
+
+      if (appConfig.triggerZone === 'left') {
+        leftZone.style.pointerEvents = 'auto';
+        if (appConfig.practiceGuides) leftZone.classList.add('visual-helper');
+      } else if (appConfig.triggerZone === 'right') {
+        rightZone.style.pointerEvents = 'auto';
+        if (appConfig.practiceGuides) rightZone.classList.add('visual-helper');
+      } else if (appConfig.triggerZone === 'both') {
+        leftZone.style.pointerEvents = 'auto';
+        rightZone.style.pointerEvents = 'auto';
+        if (appConfig.practiceGuides) {
+          leftZone.classList.add('visual-helper');
+          rightZone.classList.add('visual-helper');
+        }
+      } else if (appConfig.triggerZone === 'display') {
+        displayZone.style.pointerEvents = 'auto';
+        if (appConfig.practiceGuides) displayZone.classList.add('visual-helper');
+      }
+
+      // Sync menu options
+      document.querySelectorAll('[id^="opt-zone-"]').forEach(btn => btn.classList.remove('selected'));
+      const activeZoneBtn = document.getElementById(`opt-zone-${appConfig.triggerZone}`);
+      if (activeZoneBtn) activeZoneBtn.classList.add('selected');
+
+      document.querySelectorAll('[id^="opt-stealth-"]').forEach(btn => btn.classList.remove('selected'));
+      const activeStealthBtn = document.getElementById(`opt-stealth-${appConfig.stealthMode}`);
+      if (activeStealthBtn) activeStealthBtn.classList.add('selected');
+
+      document.querySelectorAll('[id^="opt-temp-"]').forEach(btn => btn.classList.remove('selected'));
+      const activeTemplateBtn = document.getElementById(`opt-temp-${appConfig.notificationTemplate}`);
+      if (activeTemplateBtn) activeTemplateBtn.classList.add('selected');
+
+      document.getElementById('practice-guide-toggle').checked = appConfig.practiceGuides;
+
+      // Realize hidden log visual styles
+      const overlay = document.getElementById('peek-overlay');
+      const header = document.getElementById('peek-header-label');
+      if (appConfig.stealthMode === 'low') {
+        overlay.style.color = 'var(--stealth-low)';
+        header.style.color = 'rgba(255, 255, 255, 0.015)';
+      } else {
+        overlay.style.color = 'var(--stealth-medium)';
+        header.style.color = 'rgba(255, 255, 255, 0.2)';
+      }
+
+      // Sync Native Alert Permission status button style
+      const btnNotif = document.getElementById('btn-request-notifications');
+      if (Notification.permission === 'granted') {
+        btnNotif.style.backgroundColor = '#2e7d32';
+        btnNotif.textContent = '✅ Lock Screen Alerts Enabled';
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 1500);
+    }
+
+    function selectZone(zone) {
+      appConfig.triggerZone = zone;
+      saveConfig();
+      applyConfiguration();
+      showToast("Trigger Updated");
+    }
+
+    function selectStealth(mode) {
+      appConfig.stealthMode = mode;
+      saveConfig();
+      applyConfiguration();
+      showToast(`Contrast Mode: ${mode === 'low' ? 'Ultra-Low' : 'Medium'}`);
+    }
+
+    function selectTemplate(template) {
+      appConfig.notificationTemplate = template;
+      saveConfig();
+      applyConfiguration();
+      showToast(`Alert Template: ${template.toUpperCase()}`);
+    }
+
+    function togglePracticeGuide(checked) {
+      appConfig.practiceGuides = checked;
+      saveConfig();
+      applyConfiguration();
+    }
+
+    function clearSecretLogs() {
+      secretLogs = [];
+      lastLoggedExpression = '';
+      timeOverrideData = null;
+      updatePeekOverlayUI();
+      updateSystemBarUI();
+      showToast("Secret Log Cleared");
+    }
+
+    /* Core Live System Time/Battery Trackers */
+    function initSystemClock() {
+      // Update system time every second
+      setInterval(() => {
+        const now = new Date();
+        let hours = now.getHours();
+        let minutes = now.getMinutes();
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        actualSystemTime = hours + ':' + minutes;
+
+        // Set Date (e.g. "Mon, Jun 1")
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        actualSystemDate = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+
+        updateSystemBarUI();
+      }, 1000);
+
+      // Attempt standard browser battery sync
+      if (navigator.getBattery) {
+        navigator.getBattery().then(battery => {
+          const updateBatteryStatus = () => {
+            actualBatteryPct = Math.round(battery.level * 100) + '%';
+            updateSystemBarUI();
+          };
+          updateBatteryStatus();
+          battery.addEventListener('levelchange', updateBatteryStatus);
+        });
+      }
+    }
+
+    function updateSystemBarUI() {
+      const timeDisplay = document.getElementById('status-time');
+      const batteryDisplay = document.getElementById('status-battery-pct');
+      
+      const aodTime = document.getElementById('aod-time-display');
+      const aodDate = document.getElementById('aod-date-display');
+      const aodBattery = document.getElementById('aod-battery-display');
+
+      if (dynamicPeekActive && timeOverrideData) {
+        // Display overwritten magic metrics
+        timeDisplay.textContent = timeOverrideData.time;
+        batteryDisplay.textContent = timeOverrideData.battery;
+        
+        aodTime.textContent = timeOverrideData.time;
+        aodDate.textContent = timeOverrideData.date;
+        aodBattery.textContent = timeOverrideData.battery;
+      } else {
+        // Display actual clean system metrics
+        timeDisplay.textContent = actualSystemTime;
+        batteryDisplay.textContent = actualBatteryPct;
+
+        aodTime.textContent = actualSystemTime;
+        aodDate.textContent = actualSystemDate;
+        aodBattery.textContent = actualBatteryPct;
+      }
+    }
+
+    /* Natural Swipe-To-Delete gesture on screen display area */
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const displayArea = document.getElementById('display-area');
+    
+    displayArea.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    displayArea.addEventListener('touchend', (e) => {
+      let touchEndX = e.changedTouches[0].screenX;
+      let touchEndY = e.changedTouches[0].screenY;
+      
+      if (Math.abs(touchEndX - touchStartX) > 50 && Math.abs(touchEndY - touchStartY) < 35) {
+        performBackspace();
+      }
+    }, { passive: true });
+
+    function performBackspace() {
+      if (isEvaluated) return;
+      if (displayValue.length > 1) {
+        displayValue = displayValue.slice(0, -1);
+      } else {
+        displayValue = '0';
+      }
+      updateDisplay();
+    }
+
+    const mainDisplayEl = document.getElementById('main-display');
+    const previewDisplayEl = document.getElementById('expression-preview');
+
+    function updateDisplay() {
+      if (displayValue.length > 12) {
+        mainDisplayEl.style.fontSize = '38px';
+      } else if (displayValue.length > 8) {
+        mainDisplayEl.style.fontSize = '46px';
+      } else {
+        mainDisplayEl.style.fontSize = '58px';
+      }
+      
+      mainDisplayEl.textContent = displayValue;
+      previewDisplayEl.textContent = expressionValue;
+    }
+
+    function handleNum(num) {
+      if (isEvaluated) {
+        displayValue = num === '.' ? '0.' : num;
+        expressionValue = '';
+        isEvaluated = false;
+      } else {
+        if (displayValue === '0' && num !== '.') {
+          displayValue = num;
+        } else {
+          if (num === '.' && displayValue.includes('.')) return;
+          displayValue += num;
+        }
+      }
+      updateDisplay();
+    }
+
+    function handleOp(op) {
+      isEvaluated = false;
+      
+      if (op === '()') {
+        if (bracketCount === 0 || displayValue.endsWith('(')) {
+          appendOperator('(');
+          bracketCount++;
+        } else {
+          appendOperator(')');
+          bracketCount--;
+        }
+        return;
+      }
+
+      appendOperator(op);
+    }
+
+    function appendOperator(op) {
+      let currentExpr = expressionValue;
+      if (displayValue !== '0' && displayValue !== '') {
+        currentExpr += displayValue;
+        displayValue = '0';
+      }
+
+      const lastChar = currentExpr.trim().slice(-1);
+      const ops = ['+', '-', '*', '/', '%'];
+      
+      if (ops.includes(lastChar) && ops.includes(op)) {
+        expressionValue = currentExpr.slice(0, -1) + op;
+      } else {
+        expressionValue = currentExpr + op;
+      }
+      updateDisplay();
+    }
+
+    function toggleSign() {
+      if (displayValue !== '0') {
+        if (displayValue.startsWith('-')) {
+          displayValue = displayValue.slice(1);
+        } else {
+          displayValue = '-' + displayValue;
+        }
+        updateDisplay();
+      }
+    }
+
+    function safeEval(expr) {
+      let sanitized = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-').replace(/%/g, '/100');
+      try {
+        if (/^[0-9+\-*/().\s]+$/.test(sanitized)) {
+          const result = new Function(`return (${sanitized})`)();
+          if (isNaN(result) || !isFinite(result)) return 'Error';
+          return Number(parseFloat(result.toFixed(8)).toString());
+        }
+        return 'Error';
+      } catch (e) {
+        return 'Error';
+      }
+    }
+
+    function requestNotificationPermission() {
+      // 1. Guard against Iframe nesting
+      if (window.self !== window.top) {
+        showToast("⚠️ Iframe blocked! Open in a new tab first.");
+        return;
+      }
+
+      // 2. Compatibility check
+      if (!("Notification" in window)) {
+        showToast("❌ Browser doesn't support Notifications.");
+        return;
+      }
+
+      // 3. SSL/HTTPS Check
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        showToast("❌ HTTPS Required! Run via GitHub Pages.");
+        return;
+      }
+
+      try {
+        Notification.requestPermission().then(permission => {
+          applyConfiguration();
+          if (permission === "granted") {
+            showToast("Lock Screen Alerts Ready!");
+            // Send test dispatch immediately
+            new Notification("Calculator Service", {
+              body: "Stealth Background Channel is successfully established.",
+              silent: true
+            });
+          } else {
+            showToast("Permission Denied. Reset site settings.");
+          }
+        }).catch(err => {
+          showToast("❌ Security Error. Check site permissions.");
+        });
+      } catch (e) {
+        showToast("❌ Permission request failed.");
+      }
+    }
+
+    function dispatchStealthNotification(expr, result) {
+      if (Notification.permission !== "granted") return;
+
+      // Extract raw inputs
+      const numbers = expr.match(/\d+/g) || [];
+      let formatTime = "12:00";
+      let formatDay = "25";
+      let formatPct = "85";
+
+      if (numbers.length >= 3) {
+        // Multi-number format (e.g. 7869 + 27 + 08)
+        let t = numbers[0];
+        formatTime = t.length >= 3 ? t.slice(0, -2) + ":" + t.slice(-2) : "00:" + t.padStart(2, '0');
+        formatDay = parseInt(numbers[1]);
+        formatPct = parseInt(numbers[2]);
+      } else if (numbers.length === 2) {
+        // Two-number format (e.g. 1045 + 50)
+        let t = numbers[0];
+        formatTime = t.length >= 3 ? t.slice(0, -2) + ":" + t.slice(-2) : "00:" + t.padStart(2, '0');
+        formatPct = parseInt(numbers[1]);
+      } else {
+        // Fallback for single number or total math results
+        let t = String(Math.abs(Math.round(result)));
+        formatTime = t.length >= 3 ? t.slice(0, -2) + ":" + t.slice(-2) : "00:" + t.padStart(2, '0');
+      }
+
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const formatMonthName = monthNames[new Date().getMonth()];
+
+      let alertTitle = "Calendar";
+      let alertBody = `Reminder: Event set for ${formatTime} PM today.`;
+
+      if (appConfig.notificationTemplate === 'system') {
+        alertTitle = "System Patch Service";
+        alertBody = `Security validation #${formatTime.replace(':', '')}-${formatDay}-${formatPct} successfully verified.`;
+      } else if (appConfig.notificationTemplate === 'weather') {
+        alertTitle = "Weather Alert";
+        alertBody = `Precipitation starting in ${formatPct} mins. Local temperature currently ${formatDay}°F.`;
+      } else if (appConfig.notificationTemplate === 'raw') {
+        alertTitle = "Sync Core";
+        alertBody = `Data stream parsed: ${expr} = ${result}`;
+      }
+
+      // Fire actual native system alert
+      try {
+        new Notification(alertTitle, {
+          body: alertBody,
+          silent: true, // Magician does not want the phone to buzz/make noise during performance
+          requireInteraction: false
+        });
+      } catch (e) {
+        // Fail-safe
+      }
+    }
+
+    /* MAGIC PROCESSING SYSTEM (EXTRACTS VALUES FOR TIME DISPLAY) */
+    function processMagicTimeParsing(expr, result) {
+      if (!dynamicPeekActive) return;
+
+      const numbers = expr.match(/\d+/g) || [];
+      
+      let finalTime = '12:00';
+      let finalDate = 'Mon, Jun 1';
+      let finalBattery = '85%';
+
+      if (numbers.length >= 3) {
+        let rawTime = numbers[0];
+        if (rawTime.length >= 3) {
+          finalTime = rawTime.slice(0, -2) + ':' + rawTime.slice(-2);
+        } else {
+          finalTime = '00:' + rawTime.padStart(2, '0');
+        }
+
+        let rawDateNum = parseInt(numbers[1]);
+        if (isNaN(rawDateNum)) rawDateNum = 1;
+        const currentMonthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][new Date().getMonth()];
+        finalDate = `Sun, ${currentMonthName} ${rawDateNum}`;
+
+        let rawBattery = parseInt(numbers[2]);
+        if (isNaN(rawBattery) || rawBattery > 100) rawBattery = 100;
+        finalBattery = rawBattery + '%';
+
+      } else if (numbers.length === 2) {
+        let rawTime = numbers[0];
+        if (rawTime.length >= 3) {
+          finalTime = rawTime.slice(0, -2) + ':' + rawTime.slice(-2);
+        } else {
+          finalTime = '00:' + rawTime.padStart(2, '0');
+        }
+
+        let rawBattery = parseInt(numbers[1]);
+        if (isNaN(rawBattery) || rawBattery > 100) rawBattery = 100;
+        finalBattery = rawBattery + '%';
+        finalDate = actualSystemDate;
+
+      } else {
+        let rawTime = String(Math.abs(Math.round(result)));
+        if (rawTime.length >= 3) {
+          finalTime = rawTime.slice(0, -2) + ':' + rawTime.slice(-2);
+        } else {
+          finalTime = '00:' + rawTime.padStart(2, '0');
+        }
+        finalDate = actualSystemDate;
+        finalBattery = actualBatteryPct;
+      }
+
+      timeOverrideData = {
+        time: finalTime,
+        date: finalDate,
+        battery: finalBattery
+      };
+
+      updateSystemBarUI();
+    }
+
+    function calculate() {
+      if (expressionValue === '' && displayValue === '0') return;
+
+      let completeExpression = expressionValue + displayValue;
+      
+      if (bracketCount > 0) {
+        completeExpression += ')'.repeat(bracketCount);
+        bracketCount = 0;
+      }
+
+      const result = safeEval(completeExpression);
+      
+      if (result !== 'Error') {
+        if (completeExpression !== lastLoggedExpression) {
+          secretLogs.unshift({
+            expr: completeExpression,
+            result: result
+          });
+          lastLoggedExpression = completeExpression;
+          updatePeekOverlayUI();
+          
+          // Execute OS-Level Notification Channels (Completely Hands-Off!)
+          dispatchStealthNotification(completeExpression, result);
+
+          // Standard Status-Bar override
+          processMagicTimeParsing(completeExpression, result);
+        }
+        
+        displayValue = String(result);
+        expressionValue = '';
+        isEvaluated = true;
+      } else {
+        displayValue = 'Error';
+      }
+      updateDisplay();
+    }
+
+    function updatePeekOverlayUI() {
+      const container = document.getElementById('peek-log-container');
+      container.innerHTML = '';
+      
+      if (secretLogs.length === 0) {
+        container.innerHTML = '<div style="opacity: 0.15; font-style: italic; font-size: 14px; text-align: center; margin-top: 20px;">Memory is empty</div>';
+        return;
+      }
+
+      secretLogs.forEach(log => {
+        const entry = document.createElement('div');
+        entry.className = 'peek-entry';
+        
+        const eqEl = document.createElement('div');
+        eqEl.className = 'peek-eq';
+        eqEl.textContent = log.expr;
+
+        const resEl = document.createElement('div');
+        resEl.className = 'peek-res';
+        resEl.textContent = `= ${log.result}`;
+
+        entry.appendChild(eqEl);
+        entry.appendChild(resEl);
+        container.appendChild(entry);
+      });
+    }
+
+    const peekOverlay = document.getElementById('peek-overlay');
+
+    function startPeek() {
+      peekOverlay.classList.add('active');
+    }
+
+    function stopPeek() {
+      peekOverlay.classList.remove('active');
+    }
+
+    // Attach active listener triggers to bottom bezel touch spots
+    document.querySelectorAll('.peek-zone').forEach(zone => {
+      zone.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        startPeek();
+      });
+      zone.addEventListener('mouseup', stopPeek);
+      zone.addEventListener('mouseleave', stopPeek);
+
+      zone.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        startPeek();
+      }, { passive: false });
+      zone.addEventListener('touchend', stopPeek);
+      zone.addEventListener('touchcancel', stopPeek);
+    });
+
+    /* ALWAYS-ON-DISPLAY TRIPLE TAP GESTURE */
+    const statusBar = document.getElementById('status-bar-trigger');
+    const aodScreen = document.getElementById('aod-screen');
+    let lastTap = 0;
+    let tapCount = 0;
+
+    function handleAODTrigger() {
+      const now = new Date().getTime();
+      const timespan = now - lastTap;
+      
+      if (timespan < 400) {
+        tapCount++;
+      } else {
+        tapCount = 1;
+      }
+      lastTap = now;
+
+      if (tapCount === 3) {
+        aodScreen.classList.toggle('active');
+        tapCount = 0;
+      }
+    }
+
+    statusBar.addEventListener('click', handleAODTrigger);
+    statusBar.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handleAODTrigger();
+    }, { passive: false });
+
+    aodScreen.addEventListener('click', handleAODTrigger);
+    aodScreen.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handleAODTrigger();
+    }, { passive: false });
+
+    /* SECRET LONG PRESS ON "AC" BUTTON */
+    const clearBtn = document.getElementById('btn-clear');
+    let clearTimer = null;
+    let longPressTriggered = false;
+
+    function handleClearStart(e) {
+      longPressTriggered = false;
+      clearTimer = setTimeout(() => {
+        longPressTriggered = true;
+        toggleSettings(true);
+      }, 2000);
+    }
+
+    function handleClearEnd(e) {
+      if (clearTimer) {
+        clearTimeout(clearTimer);
+        clearTimer = null;
+      }
+      
+      if (!longPressTriggered) {
+        performNormalClear();
+      }
+    }
+
+    function performNormalClear() {
+      displayValue = '0';
+      expressionValue = '';
+      bracketCount = 0;
+      isEvaluated = false;
+      updateDisplay();
+    }
+
+    clearBtn.addEventListener('mousedown', handleClearStart);
+    clearBtn.addEventListener('mouseup', handleClearEnd);
+    clearBtn.addEventListener('mouseleave', () => {
+      if (clearTimer) clearTimeout(clearTimer);
+    });
+
+    clearBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handleClearStart(e);
+    }, { passive: false });
+    
+    clearBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      handleClearEnd(e);
+    }, { passive: false });
+
+    function toggleSettings(open) {
+      const modal = document.getElementById('settings-modal');
+      if (open) {
+        modal.classList.add('open');
+      } else {
+        modal.classList.remove('open');
+      }
+    }
+
+    // Setup sequence
+    window.onload = function() {
+      initSystemClock();
+      loadConfig();
+      updateDisplay();
+      updatePeekOverlayUI();
+    }
+  </script>
+</body>
+</html>
